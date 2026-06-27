@@ -1,6 +1,11 @@
 # Taichung Weekly Events Digest — Friday Scrape
 
-Today is Friday. Your task is to scrape multiple sources for events, activities, and things to do in **Taichung and nearby** (Changhua, Nantou, Miaoli) for the **upcoming week** (Mon through Sun next week).
+Today is Friday. Your task is to scrape multiple sources for events, activities, and things to do in **Central & Northern Taiwan** for the **upcoming week** (Mon through Sun next week).
+
+## Geographic Scope
+- **Primary**: Taichung city and nearby (Changhua, Nantou, Miaoli)
+- **Extended reach** (user willing to travel): **Taipei** (north) and **Tainan / Kaohsiung** (south)
+- Include any notable events in these extended locations, especially for categories below
 
 ## Sources to scrape
 
@@ -56,4 +61,28 @@ After collecting from all sources:
 - Prioritize quality over quantity — real events with dates/times > vague mentions.
 - Include both Chinese and English event listings.
 - "Nearby" includes: Taichung city + 彰化(Changhua), 南投(Nantou), 苗栗(Miaoli)
+- "Extended reach" for priority events: Taipei, Tainan, Kaohsiung — flag with 🌏 if outside Taichung
 - Deliver the final compiled digest as your response.
+
+## Priority Event Types — Flag These Prominently
+
+When scraping, give extra weight and flag these with ⭐ in the digest:
+
+### 🏅 Sporting Events
+- Major league games in Taipei/Taichung (CPBL baseball, P. League+ / T1 basketball)
+- International tournaments, marathons, cycling races
+- Martial arts events (UFC, boxing, combat sports)
+- Big matches at Taipei Dome, Taichung Intercontinental Baseball Stadium
+- Search: "Taipei 比賽 2026", "CPBL 賽程", "sports events Taiwan next week"
+
+### 🎬 Western Film Releases
+- Hollywood / major western film premieres at Taichung or Taipei cinemas
+- Check: Vie Show Cinemas (威秀), Ambassador (國賓), Mirage (夢時代)
+- IMAX / 4DX releases
+- Search: "新片上映 台中", "movie releases Taichung next week", "IMAX Taipei"
+
+### 🎤 Western Artist Concerts
+- Concerts by English-language / international artists in Taipei, Taichung, Kaohsiung
+- Check: Taipei Arena (小巨蛋), Kaohsiung Arena, Legacy Taichung, Zepp New Taipei
+- Music festivals with international lineups
+- Search: "Taipei concert 2026", "western artist Taiwan concert", "演唱會 台北 台中"

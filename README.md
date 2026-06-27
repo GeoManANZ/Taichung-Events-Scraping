@@ -1,6 +1,16 @@
 # 🗓️ Taichung Weekly Events Scraper
 
-Automated kanban process that scrapes multiple Chinese/Taiwanese event platforms and forums every Friday for events happening in **Taichung and nearby** (Changhua, Nantou, Miaoli) during the **upcoming week**.
+Automated kanban process that scrapes multiple Chinese/Taiwanese event platforms, forums, sports schedules, cinema listings, and concert calendars every Friday for events happening in **Central & Northern Taiwan** during the **upcoming week**.
+
+### Geographic Scope
+- **Primary**: Taichung + nearby (Changhua, Nantou, Miaoli)
+- **Extended reach** (user willing to travel): Taipei, Tainan, Kaohsiung
+
+### Priority Event Types
+These are flagged with ⭐ in the digest and trigger extended geographic search (🌏 = outside Taichung):
+- 🏅 **Sporting events** — CPBL baseball, basketball leagues, international tournaments, Taipei Dome matches
+- 🎬 **Western film releases** — Hollywood premieres, IMAX/4DX at major cinemas
+- 🎤 **Western artist concerts** — International artists at Taipei Arena, Legacy Taichung, Kaohsiung Arena, etc.
 
 ## How It Works
 
@@ -17,6 +27,9 @@ Runs every **Friday at 08:00 UTC** (16:00 Taiwan time) via Hermes cron.
 | [Dcard Taichung](https://www.dcard.tw/f/taichung) | Forum | Popular Taiwanese social platform |
 | [PTT TaichungBun](https://www.ptt.cc/bbs/TaichungBun/index.html) | Forum | Taiwan's largest BBS (Taichung board) |
 | [Meetup](https://www.meetup.com/find/tw--taichung/) | Social | Community/group events |
+| CPBL / Sports Schedules | Sports | Baseball, basketball, tournaments |
+| Cinema Listings | Movies | Vie Show, Ambassador, Mirage — IMAX/4DX |
+| Taipei Arena / Legacy Taichung | Concerts | Western artist concert schedules |
 | General Web Search | Web | Supplementary search results |
 
 ### Kanban Workflow
