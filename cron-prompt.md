@@ -9,12 +9,12 @@ Today is Friday. Your task is to scrape multiple sources for events, activities,
 
 ## IMPORTANT: How to scrape
 
-**DO NOT use `web_search` or SearXNG — they return empty results.**
-Use these tools instead, in this priority order:
+Use these tools in priority order:
 
-1. **fastCRW MCP tools** (`mcp_fastcrw_fastcrw_scrape` / `mcp_fastcrw_fastcrw_crawl` / `mcp_fastcrw_fastcrw_map`) — preferred for most sites
-2. **Browser** (`browser_navigate`, `browser_snapshot`, `browser_click`) — for JS-heavy sites
-3. **`web_extract`** — for simple markdown extraction from plain URLs
+1. **Web search** (`web_search`) — for discovery queries (e.g. "Taichung concerts July 2026", "CPBL schedule")
+2. **fastCRW MCP tools** (`mcp_fastcrw_fastcrw_scrape` / `mcp_fastcrw_fastcrw_crawl` / `mcp_fastcrw_fastcrw_map`) — for page content extraction
+3. **Browser** (`browser_navigate`, `browser_snapshot`, `browser_click`) — for JS-heavy sites
+4. **`web_extract`** — for simple markdown extraction from plain URLs
 
 ## Sources to scrape
 

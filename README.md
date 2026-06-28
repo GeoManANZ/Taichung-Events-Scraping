@@ -30,7 +30,7 @@ Runs every **Friday at 08:00 UTC** (16:00 Taiwan time) via Hermes cron.
 | CPBL / Sports Schedules | Sports | Baseball, basketball, tournaments |
 | Cinema Listings | Movies | Vie Show, Ambassador, Mirage — IMAX/4DX |
 | Taipei Arena / Legacy Taichung | Concerts | Western artist concert schedules |
-| General Web Search | Web | Supplementary search results |
+| Web Search | Search | Supplementary discovery via Hermes web_search (SearXNG) |
 
 ### Kanban Workflow
 
