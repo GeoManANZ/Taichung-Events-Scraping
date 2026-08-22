@@ -1,0 +1,95 @@
+# Engine overrides for SearXNG
+# Merged on top of use_default_settings: true
+engines:
+  # DuckDuckGo — timing out at 3s, increase timeout
+  - name: duckduckgo
+    timeout: 10.0
+    disabled: false
+
+  - name: duckduckgo images
+    timeout: 10.0
+
+  - name: duckduckgo videos
+    timeout: 10.0
+
+  - name: duckduckgo news
+    timeout: 10.0
+
+  # Brave — rate-limited without API key, increase timeout
+  - name: brave
+    timeout: 10.0
+    disabled: false
+
+  - name: brave.images
+    timeout: 10.0
+
+  - name: brave.videos
+    timeout: 10.0
+
+  - name: brave.news
+    timeout: 10.0
+
+  # Bing web — disabled by default, enable it
+  - name: bing
+    disabled: false
+    timeout: 10.0
+
+  - name: bing images
+    timeout: 10.0
+
+  - name: bing news
+    timeout: 10.0
+
+  - name: bing videos
+    timeout: 10.0
+
+  # Qwant — disabled by default, enable it
+  - name: qwant
+    disabled: false
+    timeout: 10.0
+
+  - name: qwant news
+    timeout: 10.0
+
+  - name: qwant images
+    timeout: 10.0
+
+  - name: qwant videos
+    timeout: 10.0
+
+  # Mojeek — disabled by default, good independent engine
+  - name: mojeek
+    disabled: false
+    timeout: 10.0
+
+  - name: mojeek images
+    timeout: 10.0
+
+  - name: mojeek news
+    timeout: 10.0
+
+  # Google — keep enabled but longer timeout
+  - name: google
+    timeout: 10.0
+
+  - name: google images
+    timeout: 10.0
+
+  - name: google news
+    timeout: 10.0
+
+  - name: google videos
+    timeout: 10.0
+
+  - name: google scholar
+    timeout: 10.0
+
+  # Startpage — keep as-is
+  - name: startpage
+    timeout: 10.0
+
+  - name: startpage news
+    timeout: 10.0
+
+  - name: startpage images
+    timeout: 10.0

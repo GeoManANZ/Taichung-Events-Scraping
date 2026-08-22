@@ -1,91 +1,108 @@
-# Taichung Weekly Events Digest — Friday Scrape
+# Taichung Weekly Events Digest — v3 (verified sources + escalation ladder)
 
-Today is Friday. Your task is to scrape multiple sources for events, activities, and things to do in **Central & Northern Taiwan** for the **upcoming week** (Mon through Sun next week).
+Today is **Friday**. Your task: find events in **Taichung + Central Taiwan** for **next week (Mon–Sun)** and deliver a Telegram digest as your final response.
 
-## Geographic Scope
-- **Primary**: Taichung city and nearby (Changhua, Nantou, Miaoli)
-- **Extended reach** (user willing to travel): **Taipei** (north) and **Tainan / Kaohsiung** (south)
-- Include any notable events in these extended locations, especially for priority categories below
+## Step 0 — Compute the target week FIRST
+```bash
+date +%Y-%m-%d            # today
+date -d "next monday" +%Y-%m-%d
+date -d "next sunday" +%Y-%m-%d
+```
+Next week = the Mon–Sun following this Friday. Every event you report MUST fall inside those 7 days. If an event has no verifiable date, drop it.
 
-## IMPORTANT: How to scrape
+## Tool ladder (use exactly these tools, in this order)
+1. `mcp__groktocrawl__groktocrawl_search` — **primary discovery** (Serper-backed, reliable)
+2. `mcp__fastcrw__fastcrw_scrape` — page content (Lightpanda JS render; add `"waitFor": 8000` for SPA sites like ACCUPASS)
+3. `mcp__groktocrawl__groktocrawl_scrape` — fallback renderer when fastCRW fails
+4. `web_extract` — plain static pages only
+5. **Escalation (see below)** — rotating proxy / 2Captcha, only when justified
 
-Use these tools in priority order:
+⚠️ Do NOT use `mcp__fastcrw__fastcrw_search` — its SearXNG backend returns empty results (broken since at least 2026-08-21).
+⚠️ Do NOT use `delegate_task` — subagent spawning broke delivery (broken-pipe failures).
 
-1. **Web search** (`web_search`) — for discovery queries (e.g. "Taichung concerts July 2026", "CPBL schedule")
-2. **fastCRW MCP tools** (`mcp_fastcrw_fastcrw_scrape` / `mcp_fastcrw_fastcrw_crawl` / `mcp_fastcrw_fastcrw_map`) — for page content extraction
-3. **Browser** (`browser_navigate`, `browser_snapshot`, `browser_click`) — for JS-heavy sites
-4. **`web_extract`** — for simple markdown extraction from plain URLs
+## Escalation rules (proxy / CAPTCHA)
+Default is NO proxy — most sources work directly. Escalate only per-source:
 
-## Sources to scrape
+1. A fetch fails with 403 / bot-block / empty-render → retry ONCE through the **Webshare rotating residential proxy**:
+   ```bash
+   # Credentials in ./proxy_env.sh (user-paid plan — do not commit elsewhere)
+   source "$(dirname "$0")/proxy_env.sh" 2>/dev/null || true
+   # For fastCRW JSON: add "proxy": "http://ualfuslo-rotate:$WEBSHARE_PASS@185.24.10.165:80"
+   # For curl: curl -x "http://ualfuslo-rotate:$WEBSHARE_PASS@185.24.10.165:80"
+   ```
+   Each request exits from a different residential IP. One retry per source, then move on.
+2. Only if a HIGH-VALUE source (CPBL schedule, ticketing) presents an interactive CAPTCHA *and* no search-index alternative exists → use 2Captcha (`twocaptcha_client.py` pattern from the aisne project). **Hard cap: 3 solves per run.** Check balance first; abort below $0.50.
+3. Never burn more than 2 attempts on any single source. Breadth beats depth.
 
-Use `delegate_task` (parallel subagents, 3 at a time). Each subagent gets ONE of these batches:
+## Sources — Tier 0 (always scrape directly, verified working 2026-08-22)
 
-### Batch 1 — Event Platforms (fastCRW preferred)
-1. **ACCUPASS Taichung** — `mcp_fastcrw_fastcrw_scrape` on `https://www.accupass.com/search?l=taichung` and individual event pages. Extract name, date, time, location, price, description.
-2. **KKTIX** — Try `mcp_fastcrw_fastcrw_search` or `mcp_fastcrw_fastcrw_scrape` on `https://kktix.com/search?q=台中`. If Cloudflare-blocked, skip and report.
-3. **小藝行事曆 (yii.tw)** — `mcp_fastcrw_fastcrw_crawl` on `https://yii.tw/taichung` — great aggregation of music, exhibitions, drama, lectures. Depth 2.
+| # | Source | How |
+|---|---|---|
+| 1 | **ACCUPASS Taichung** | `fastcrw_scrape` `https://www.accupass.com/search?l=taichung` **with `"waitFor":8000`** — renders full event cards w/ dates + links |
+| 2 | **Taichung Culture Bureau** | `fastcrw_scrape` `https://activity.culture.taichung.gov.tw/` |
+| 3 | **NTT 國家歌劇院** | `groktocrawl_search` `"site:npac-ntt.org 2026年9月"` then scrape top program pages |
+| 4 | **OPENTIX 兩廳院** | `groktocrawl_search` `"site:opentix.life 台中 9月"` (search-index route — direct search page renders empty) |
+| 5 | **Meetup Taichung** | `fastcrw_scrape` `https://www.meetup.com/find/tw--taichung/` |
+| 6 | **CPBL baseball** | `fastcrw_scrape` `https://tix.ctbcsports.com/BROTHERS/UTK0102_?TYPE=4` (Brothers home games @洲際 with dates) |
+| 7 | **Legacy Taichung concerts** | `fastcrw_scrape` `https://www.indievox.com/partner/search/Legacy%20Taichung` |
+| 8 | **PTT TaichungBun** | `groktocrawl_scrape` `https://www.ptt.cc/bbs/TaichungBun/index.html` (look for [活動]/[情報] posts) |
 
-### Batch 2 — Forums & Social (Browser + fastCRW)
-4. **PTT TaichungBun** — Browser on `https://www.ptt.cc/bbs/TaichungBun/index.html`. Scroll and look for posts with [活動], [情報], [分享] about upcoming events. Check multiple index pages.
-5. **Meetup.com** — `mcp_fastcrw_fastcrw_scrape` on `https://www.meetup.com/find/tw--taichung/`. Community/group events.
-6. **Dcard Taichung** — Browser on `https://www.dcard.tw/f/taichung`. If Cloudflare-blocked, skip.
+## Sources — Tier 1 (search-index route; direct scraping is bot-blocked)
 
-### Batch 3 — Venues, Sports, Movies, Concerts (fastCRW + Browser)
-7. **Legacy Taichung / Taipei / TERA** — `mcp_fastcrw_fastcrw_scrape` on `https://www.legacy.com.tw/` for upcoming concert schedules.
-8. **Taipei Arena** — Browser on `https://www.arena.taipei/`. Events calendar.
-9. **Taichung Tourism** — `mcp_fastcrw_fastcrw_scrape` on `https://taichung.travel/en/` for event calendar.
-10. **Taichung Culture Bureau** — Browser on `https://activity.culture.taichung.gov.tw/`. May be slow — set shorter timeout.
+These sites block all our IPs/renderers. Get their content THROUGH the search engine instead:
 
-### Priority Event Sources — Always check these separately
-11. **CPBL / Sports** — `mcp_fastcrw_fastcrw_search` query "CPBL 賽程 2026" or browser on `https://www.cpbl.com.tw/` for game schedule.
-12. **Cinemas** — `mcp_fastcrw_fastcrw_scrape` on Vie Show (威秀) Taichung or Taipei for Hollywood release listings.
-13. **Concerts** — `mcp_fastcrw_fastcrw_scrape` on `https://www.arena.taipei/` and `https://www.legacy.com.tw/` for international artist schedules.
+| Site | Query pattern |
+|---|---|
+| **KKTIX** | `groktocrawl_search`: `site:kktix.com 台中` (+ month name, e.g. `9月`) — indexed pages carry title/date/venue in the description |
+| **Eventbrite** | `groktocrawl_search`: `site:eventbrite.com taichung` |
+| **Dcard 台中版** | `groktocrawl_search`: `site:dcard.tw f/taichung 活動` |
+| **Vie Show 威秀電影** | `groktocrawl_search`: `威秀影城 台中 上映 電影 9月` |
 
-## Compilation
+For each hit, open the individual event page (usually scrapes fine even when the listing page is blocked).
 
-After collecting from all sources:
-1. **Deduplicate** — remove same events from multiple sources
-2. **Date filter** — ONLY include events happening next week (Mon-Sun)
-3. **Categorize by day** — group events under each day of the week
-4. **Within each day, categorize as**: ⭐ Priority Events | 🎵 Concerts & Music | 🎨 Arts & Culture | 🍽️ Food & Drink | 🌿 Outdoor & Nature | 🌙 Nightlife | 📚 Workshops & Classes | 🤝 Community | 🎪 Other
-5. **Format nicely in Markdown** for Telegram delivery
+## Sources — Tier 2 (tourism / city calendars)
+
+| Source | URL | Note |
+|---|---|---|
+| 臺中觀光旅遊網 (EN) | `https://www.taichung.travel/en/event/touristcalendar` | ⚠️ old `/en/event/` URL is a 404 — use this exact path |
+| 臺中觀光旅遊網活動消息 | `https://travel.taichung.gov.tw/zh-tw/Event/News` | Chinese, current festivals/fairs |
+
+## Search radius (increased in v3)
+
+| Tier | Area | Flag |
+|---|---|---|
+| Core | 台中市 (all districts incl. 沙鹿/豐原/大甲) | — |
+| Nearby | 彰化縣市, 南投縣 (日月潭/草屯/埔里), 苗栗縣 | 🚗 |
+| Extended — priority events only | 台北/新北, 台南, 高雄 | 🌏 |
+
+Priority categories earn the extended radius (🌏): ⚽ sporting events (CPBL anywhere, basketball, marathons), 🎬 western film releases/premieres, 🎤 western/international artist concerts, 🎪 large festivals. Everything else stays within Tier "core+nearby".
+
+## Compilation rules
+- Deduplicate across sources (same title + same date = one entry; prefer the link with the richest detail).
+- Group by day (Mon→Sun), then category within each day: 🎵 Concerts · 🎨 Arts/Culture · ⚽ Sports · 🎬 Movies · 🍽️ Food/Festivals · 📚 Workshops · 🤝 Community/Meetups · 🌿 Outdoor.
+- Every event line carries: name (keep original language), time, venue, price if known, and a markdown source link.
+- **Never fabricate**: if a source gave you a title but no date, either verify the date by opening the linked page or drop the event. Zero invented details.
+- Ongoing exhibitions section at the bottom (open ≥ the whole target week).
+- End the digest with a one-line provenance footer listing which sources actually returned data and which failed/skipped (transparency over silence).
+
+## Budget & failure handling
+- Cap total tool calls at ~35. If you're running out, stop collecting and compile with what you have.
+- A source failing = note it in the footer and continue. Never stall on retries.
+- If literally everything failed → reply `[SILENT]`.
 
 ## Output format
-
 ```
-## 🗓️ Taichung Events — [Date Range] (Next Week)
+## 🗓️ Taichung Events — [Mon date] – [Sun date]
 
-### ⭐ Priority Events
-🌏 Taipei — 🎤 [Event Name] — Date, Time, Location
+### Monday, [date]
+🎵 **[Event]** — time · venue · price
+  one-line description [Source](url)
+
 ...
 
-### Monday, [Date]
-...
+### 📌 Ongoing Exhibitions
+🖼️ **[Exhibition]** — venue, closed [date], hours
 
 ---
-
-*🤖 Scraped from ACCUPASS, 小藝行事曆, PTT, Meetup, Legacy, Taipei Arena, and venue sites*
+*🤖 Sources: [list OK ones] · Skipped: [list failed ones]*
 ```
-
-## Important notes
-- If a source is unreachable (Cloudflare, timeout), skip it gracefully. Don't waste time retrying.
-- Prioritize quality over quantity — real events with confirmed dates > vague mentions.
-- Include both Chinese and English event listings.
-- Flag events outside Taichung (Taipei, Kaohsiung, Tainan) with 🌏
-- Deliver the final compiled digest as your response.
-
-## Priority Event Types — Flag These Prominently with ⭐
-
-### 🏅 Sporting Events
-- CPBL baseball games, P. League+ / T1 basketball, international tournaments
-- Big matches at Taipei Dome, Taichung Intercontinental Baseball Stadium
-- Check: `mcp_fastcrw_fastcrw_search` "CPBL" or browser on CPBL site
-
-### 🎬 Western Film Releases
-- Hollywood / major western film premieres at Taichung or Taipei cinemas
-- Check: Vie Show Cinemas (威秀), Ambassador (國賓)
-- IMAX / 4DX releases — usually on Fridays
-
-### 🎤 Western Artist Concerts
-- English-language / international artists in Taipei, Taichung, Kaohsiung
-- Check: Taipei Arena (小巨蛋), Legacy Taichung, Legacy Taipei, Zepp New Taipei, Kaohsiung Arena
