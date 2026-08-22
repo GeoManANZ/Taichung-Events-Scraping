@@ -1,110 +1,77 @@
-# 🗓️ Taichung Weekly Events Scraper
+# Taichung Weekly Events Scraper
 
-Automated kanban process that scrapes multiple Chinese/Taiwanese event platforms, forums, sports schedules, cinema listings, and concert calendars every Friday for events happening in **Central & Northern Taiwan** during the **upcoming week**.
+Automated Friday cron that scrapes Taiwanese event platforms, forums, sports schedules, and venue calendars for the **upcoming week (Mon–Sun)** in **Central Taiwan**, delivered as a Telegram digest.
 
-### Geographic Scope
-- **Primary**: Taichung + nearby (Changhua, Nantou, Miaoli)
-- **Extended reach** (user willing to travel): Taipei, Tainan, Kaohsiung
+## Geographic Scope (v3)
 
-### Priority Event Types
-These are flagged with ⭐ in the digest and trigger extended geographic search (🌏 = outside Taichung):
-- 🏅 **Sporting events** — CPBL baseball, basketball leagues, international tournaments, Taipei Dome matches
-- 🎬 **Western film releases** — Hollywood premieres, IMAX/4DX at major cinemas
-- 🎤 **Western artist concerts** — International artists at Taipei Arena, Legacy Taichung, Kaohsiung Arena, etc.
-
-## How It Works
-
-### Schedule
-Runs every **Friday at 08:00 UTC** (16:00 Taiwan time) via Hermes cron.
-
-### Sources
-
-| Source | Type | Description |
+| Tier | Area | Flag |
 |---|---|---|
-| [KKTIX](https://kktix.com) | Event Platform | Taiwanese ticketing & event platform |
-| [ACCUPASS](https://accupass.com) | Event Platform | Popular Taiwanese event hub |
-| [Taichung Culture Bureau](https://activity.culture.taichung.gov.tw) | Government | City cultural events calendar |
-| [Dcard Taichung](https://www.dcard.tw/f/taichung) | Forum | Popular Taiwanese social platform |
-| [PTT TaichungBun](https://www.ptt.cc/bbs/TaichungBun/index.html) | Forum | Taiwan's largest BBS (Taichung board) |
-| [Meetup](https://www.meetup.com/find/tw--taichung/) | Social | Community/group events |
-| CPBL / Sports Schedules | Sports | Baseball, basketball, tournaments |
-| Cinema Listings | Movies | Vie Show, Ambassador, Mirage — IMAX/4DX |
-| Taipei Arena / Legacy Taichung | Concerts | Western artist concert schedules |
-| Web Search | Search | Supplementary discovery via Hermes web_search (SearXNG) |
+| Core | 台中市 all districts (incl. 沙鹿/豐原/大甲) | — |
+| Nearby | 彰化縣市 · 南投縣 · 苗栗縣 | 🚗 |
+| Extended — priority events only | 台北/新北 · 台南 · 高雄 | 🌏 |
 
-### Kanban Workflow
+Priority categories earn 🌏 extended radius: sporting events (CPBL anywhere), western film releases, international artist concerts, large festivals.
 
-The process is structured as a kanban board with dependency chaining:
+## Source Matrix (all verified live 2026-08-22)
 
-```
-K1: KKTIX Scrape ─┐
-K2: ACCUPASS Scrape ─┤
-K3: Culture Bureau ─┤──→ K6: Compile & Digest
-K4: Dcard & PTT ────┤
-K5: Meetup & Web ───┘
-```
+### Tier 0 — direct scrape works
+| Source | Route | Note |
+|---|---|---|
+| ACCUPASS 台中 | fastCRW + `waitFor:8000` | SPA — without wait you get a loading GIF only |
+| Culture Bureau 文化局 | fastCRW | plain server-rendered |
+| Meetup | fastCRW | |
+| CPBL 洲際 games | fastCRW `tix.ctbcsports.com/BROTHERS/UTK0102_?TYPE=4` | cpbl.com.tw itself is bot-blocked; ticketing page carries full schedule w/ dates |
+| Legacy Taichung | fastCRW `indievox.com/partner/search/Legacy%20Taichung` | legacy.com.tw has no /taichung path (404) |
+| PTT TaichungBun | groktocrawl_scrape | needs over18 handling — groktocrawl does it internally |
+| NTT 歌劇院 / OPENTIX | via `groktocrawl_search` site: queries | direct listing pages render empty/blocked |
 
-- **K1-K5** run in parallel (independent)
-- **K6** waits for all five to complete, then compiles, deduplicates, categorizes by day and type, and delivers the digest
+### Tier 1 — search-index route ONLY (bot-blocked direct)
+KKTIX · Eventbrite · Dcard · Vie Show 威秀 — all return 403/CAPTCHA to every renderer and IP we own (datacenter, WARP, rotating residential). Get their event pages through `groktocrawl_search` (`site:` queries), then open individual event URLs which usually scrape fine.
 
-### Output Format
+### Tier 2 — tourism calendars
+- `taichung.travel/en/event/touristcalendar` ⚠️ old `/en/event/` is a **404**
+- `travel.taichung.gov.tw/zh-tw/Event/News`
 
-Delivered as a Markdown digest grouped by day and category:
+## Escalation Ladder
 
 ```
-## 🗓️ Taichung Events — Jul 7–13 (Next Week)
-
-### Monday, Jul 7
-🎵 **Event Name** — Time, Location
-  Description. [Source](url)
-
-### Saturday, Jul 12
-🎨 Exhibition Name — 10:00-18:00, Museum
-  ...
+direct fetch → fail → ONE retry via Webshare rotating residential
+            → still blocked → route through groktocrawl_search index
+            → interactive CAPTCHA on high-value source only → 2Captcha
+              (hard cap 3 solves/run, balance floor $0.50)
 ```
 
-Categories used: 🎵 Concerts & Music | 🎨 Arts & Culture | 🍽️ Food & Drink | 🌿 Outdoor & Nature | 🌙 Nightlife | 📚 Workshops & Classes | 🤝 Community | 🎪 Other
+Credentials for the proxy live in `proxy_env.sh` (**gitignored**). The 2Captcha key lives in `/workspace/hermes1/projects/aisne-property-search/.env`.
 
-## Setup
+## Known-Broken (do not use)
 
-### Prerequisites
-- Hermes Agent with kanban enabled
-- `fastcrw` MCP server for web scraping
-- SSH key registered on GitHub (for pushing updates)
+| Tool/URL | Status |
+|---|---|
+| `mcp__fastcrw__fastcrw_search` | SearXNG backend returns empty results since ≥2026-08-21. Use `groktocrawl_search`. |
+| `delegate_task` in cron | broke delivery with broken-pipe errors historically. Scrape inline. |
+| `kktix.com` direct | Cloudflare "Just a moment" loop on every renderer + every IP tier. |
+| `dcard.tw` direct | IP-reputation block (403) even on residential. |
+| `cpbl.com.tw/schedule` | near-empty anti-bot response. |
+| `legacy.com.tw/taichung` | 404 — site has no such path. |
+| `eventbrite.com` direct | puzzle CAPTCHA wall. |
 
-### Files
+## Schedule & Delivery
+
+- Cron job `taichung-weekly-events` (job_id `afb010899802`) — **Fridays 08:00 UTC (16:00 TW)**, delivers to origin chat.
+- The stored cron prompt is authoritative; this repo's `cron-prompt.md` mirrors it. After editing the file here, ALSO update the job (`cronjob update`) — file edits do NOT propagate automatically (this bit us once).
+
+## Files
 
 | File | Purpose |
 |---|---|
-| `cron-prompt.md` | The cron job prompt definition |
-| `kanban-setup.sh` | Script to recreate the kanban board tasks |
-| `setup.sh` | Full one-shot setup script |
+| `cron-prompt.md` | Full v3 scraping prompt (mirror of the stored cron prompt) |
+| `proxy_env.sh` | Webshare rotating-plan credentials (gitignored) |
+| `searxng-engines.yml` | SearXNG engine overrides (legacy, kept for reference) |
+| `setup.sh` / `kanban-setup.sh` | Original kanban-era setup (superseded by single-agent inline flow) |
 
-### Manual Setup
+## History
 
-1. Ensure your Hermes config has kanban enabled:
-   ```bash
-   hermes config show | grep kanban
-   ```
-
-2. The cron job is already registered as `taichung-weekly-events` (job_id: `9c53408b8de0`).
-
-3. To trigger manually:
-   ```bash
-   hermes cron run taichung-weekly-events
-   ```
-
-4. To view the kanban board:
-   ```bash
-   hermes kanban list
-   ```
-
-## Development
-
-To modify the scraping sources or output format, edit:
-- `cron-prompt.md` — the full scraping prompt
-- Update the kanban task bodies accordingly
-
-## License
-
-MIT
+- **v1** — 10-source kanban board (K1–K6), delegate_task subagents → broken pipe failures
+- **v2** — reduced to 6 reliable sources, inline scraping
+- **v2.5** (Jul 2) — PTT + Culture Bureau re-added after WARP testing
+- **v3** (Aug 22) — full source verification pass; groktocrawl_search promoted; Tier 0/1/2 matrix; escalation ladder (rotating residential + capped 2Captcha); radius widened to 彰化/南投/苗栗 core+nearby
