@@ -2,6 +2,10 @@
 
 Automated Friday cron that scrapes Taiwanese event platforms, forums, sports schedules, and venue calendars for the **upcoming week (Mon–Sun)** in **Central Taiwan**, delivered as a Telegram digest.
 
+## Output Language
+
+**English only.** The user cannot read Chinese. All event names, venues, and descriptions in the delivered digest are translated to English; original Chinese is kept in parentheses only where it helps identify the event on a ticketing page (e.g. `Aomori Nebuta Festival (青森ねぶた祭)`). Venues are rendered as English name + district. Search queries themselves stay in Chinese — only the output is translated.
+
 ## Geographic Scope (v3)
 
 | Tier | Area | Flag |

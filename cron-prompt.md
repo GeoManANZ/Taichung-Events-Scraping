@@ -78,12 +78,17 @@ For each hit, open the individual event page (usually scrapes fine even when the
 Priority categories earn the extended radius (🌏): ⚽ sporting events (CPBL anywhere, basketball, marathons), 🎬 western film releases/premieres, 🎤 western/international artist concerts, 🎪 large festivals. Everything else stays within Tier "core+nearby".
 
 ## Compilation rules
+- **Language: ENGLISH ONLY.** The user cannot read Chinese. Every event line must be in English:
+  - Event name → translate to English (keep the original Chinese in parentheses only where it helps identify the event on a ticketing page, e.g. `Aomori Nebuta Festival (青森ねぶた祭)`).
+  - Venue → English name + district (e.g. `Intercontinental Stadium (北屯區)`), NOT raw Chinese.
+  - Time/date/price → numbers, no translation needed.
+  - Search queries can stay in Chinese (that's how you find the events) — only the DIGEST OUTPUT is English.
 - Deduplicate across sources (same title + same date = one entry; prefer the link with the richest detail).
 - Group by day (Mon→Sun), then category within each day: 🎵 Concerts · 🎨 Arts/Culture · ⚽ Sports · 🎬 Movies · 🍽️ Food/Festivals · 📚 Workshops · 🤝 Community/Meetups · 🌿 Outdoor.
-- Every event line carries: name (keep original language), time, venue, price if known, and a markdown source link.
+- Every event line carries: English name, time, English venue (+district), price if known, and a markdown source link.
 - **Never fabricate**: if a source gave you a title but no date, either verify the date by opening the linked page or drop the event. Zero invented details.
 - Ongoing exhibitions section at the bottom (open ≥ the whole target week).
-- End the digest with a one-line provenance footer listing which sources actually returned data and which failed/skipped (transparency over silence).
+- End with a one-line provenance footer listing which sources actually returned data and which failed/skipped (transparency over silence).
 
 ## Budget & failure handling
 - Cap total tool calls at ~35. If you're running out, stop collecting and compile with what you have.
