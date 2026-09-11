@@ -370,33 +370,57 @@ def collect():
 
 
 # ── LLM compile ───────────────────────────────────────────────────────────────
-def call_llm(prompt, max_tokens=16000, attempts=2):
+def call_llm(prompt, max_tokens=16000, attempts=3):
     """Compile the digest. deepseek-v4-flash is a REASONING model: it emits
-    `reasoning_content` first and only then `content`. With a large scraped
-    payload the thinking can consume the whole token budget, leaving `content`
-    empty — which previously caused the raw reasoning trace to be delivered as
-    the digest. So: generous budget, retry once bigger, and NEVER fall back to
-    reasoning_content (a trace is not a digest)."""
-    last = ""
+    `reasoning_content` first and only then `content`. Two failure modes seen
+    in production, both silent if unchecked:
+
+      1. thinking consumes the whole budget -> `content` empty  (v4 dev run:
+         the raw reasoning trace was nearly delivered as the digest)
+      2. `content` comes back TRUNCATED mid-line, finish_reason="length"
+         (2026-09-11 cron run: digest stopped mid-Friday, Sat/Sun lost)
+
+    So: generous budget, escalate on either symptom, and treat a "length"
+    finish as failure rather than accepting a half digest."""
+    last, partial = "", ""
     for i in range(attempts):
+        prompt_i = prompt
+        if i == attempts - 1:
+            prompt_i = prompt + ("\n\nIMPORTANT: you are running low on output "
+                                 "space. Be TERSE — one line per event, drop the "
+                                 "description line, keep every event.")
         r = requests.post("https://api.deepseek.com/v1/chat/completions",
                           headers={"Authorization": f"Bearer {DEEPSEEK_KEY}",
                                    "Content-Type": "application/json"},
                           json={"model": "deepseek-v4-flash",
-                                "messages": [{"role": "user", "content": prompt}],
+                                "messages": [{"role": "user", "content": prompt_i}],
                                 "max_tokens": max_tokens, "temperature": 0.2},
                           timeout=600)
         r.raise_for_status()
         ch = r.json()["choices"][0]
         m = ch["message"]
         content = (m.get("content") or "").strip()
-        if content:
+        finish = ch.get("finish_reason")
+        if content and finish != "length":
             return content
-        last = (f"empty content (finish_reason={ch.get('finish_reason')}, "
-                f"reasoning={len(m.get('reasoning_content') or '')} chars)")
-        log(f"LLM attempt {i+1}: {last}; retrying with a larger budget")
+        last = (f"content={len(content)} chars, finish_reason={finish}, "
+                f"reasoning={len(m.get('reasoning_content') or '')} chars")
+        log(f"LLM attempt {i+1}/{attempts}: {last} — retrying with a larger budget")
         max_tokens = min(max_tokens * 2, 32000)
-    raise RuntimeError(f"LLM produced no answer: {last}")
+        partial = content
+    raise LLMTruncated(partial, f"LLM produced no complete answer: {last}")
+
+
+class LLMTruncated(RuntimeError):
+    """Raised when every attempt returned a truncated digest.
+
+    Carries the partial content so the caller can still deliver the events it
+    did extract, clearly flagged, instead of losing the whole run.
+    """
+
+    def __init__(self, partial, message):
+        super().__init__(message)
+        self.partial = partial
 
 
 def build_prompt(chunks, mon, sun, health):
@@ -419,15 +443,17 @@ HARD RULES
 7. Close with exactly: *🤖 Sources OK: {', '.join(ok_names) or 'none'} · Failed: {', '.join(bad_names) or 'none'}*
 8. If NO event falls inside the window, output exactly: NO_EVENTS_IN_WINDOW
 
-FORMAT
+FORMAT (keep it COMPACT — one line per event, no trailing description line)
 ## 🗓️ Taichung Events — {mon.strftime('%b %d')} – {sun.strftime('%b %d, %Y')}
 
 ### Monday, {mon.strftime('%b %d')}
-🎵 **English Event Name** — 19:30 · English Venue (District) · NT$500
-  One-line English description. [Source](url)
+🎵 **English Event Name** — 19:30 · English Venue (District) · NT$500 [Source](url)
+🤝 **Another Event** — 19:00 · Venue · Free [Source](url)
 
-### 📌 Ongoing Exhibitions
-🖼️ **English Name** — Venue, closes [date]
+### 📌 Ongoing
+🖼️ **English Name** — Venue, closes [date] [Source](url)
+
+Include EVERY event you can verify inside the week — completeness matters more than prose. Do not add a description line per event.
 
 SCRAPED CONTENT:
 {chr(10).join(chunks) if chunks else '(no source returned content)'}
@@ -456,6 +482,18 @@ def main():
 
     try:
         digest = call_llm(build_prompt(chunks, mon, sun, health))
+    except LLMTruncated as e:
+        log(f"LLM truncated after all attempts: {e}")
+        # Deliver what we extracted, clearly flagged — a partial digest with a
+        # warning beats a silent half-digest or nothing at all.
+        if e.partial:
+            print(e.partial)
+            print("\n⚠️ **This digest was truncated** — the compiler hit its output "
+                  "limit, so later days may be missing. Earlier days are complete.")
+            print(f"*🤖 Sources OK: {', '.join(h['source'] for h in health if h['ok']) or 'none'} "
+                  f"· Failed: {', '.join(h['source'] for h in health if not h['ok']) or 'none'}*")
+            return
+        digest = ""
     except Exception as e:
         log(f"LLM compile failed: {type(e).__name__}: {e}")
         digest = ""
