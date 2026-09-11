@@ -69,8 +69,7 @@ Failure modes are all handled with explicit stdout (stderr is invisible to cron)
 ## Ops
 
 - **Cron:** job `taichung-weekly-events` (`afb010899802`), **Fridays 08:00 UTC (16:00 TW)**, `no_agent` + `script=taichung-events-weekly.py`, delivered to origin.
-- **Script symlink:** `/opt/data/scripts/taichung-events-weekly.py` → this repo's `taichung_events.py`. The runner resolves `script:` against **`/opt/data/scripts/`** (not `/opt/data/home/scripts/`) — a symlink there is mandatory or the job fails with `Script not found`.
-- **Dependencies:** `requests` + `bs4` from `/opt/data/home/.local/lib/python3.13/site-packages` (the script inserts it; the cron runner uses `-s` and would otherwise miss them).
+- **Script deploy:** `./deploy.sh` copies the script to `/opt/data/scripts/taichung-events-weekly.py`. It must be a **real file there, not a symlink** — the runner rejects a path that resolves outside `/opt/data/scripts/` (`Blocked: script path resolves outside the scripts directory`) and rejects a missing file (`Script not found`). **Run `./deploy.sh` after every edit to `taichung_events.py`.**
 - **Manual run:** `python3 /opt/data/scripts/taichung-events-weekly.py`
 - **Raw bundle:** `data/raw_YYYY-MM-DD.json` (per-source health + filtered chunks) for debugging.
 - **Edit discipline:** the script is the source of truth. Editing `cron-prompt.md` alone changes nothing.
@@ -92,7 +91,7 @@ Failure modes are all handled with explicit stdout (stderr is invisible to cron)
 
 | File | Purpose |
 |---|---|
-| `taichung_events.py` | The scraper (also symlinked to `~/scripts/taichung-events-weekly.py`) |
+| `taichung_events.py` | The scraper (source of truth) |
+| `deploy.sh` | Copies the scraper to `/opt/data/scripts/` — run after every edit |
 | `cron-prompt.md` | Legacy v3 agent prompt — kept for history, no longer used |
 | `proxy_env.sh` | Webshare creds (gitignored) |
-| `taichung_events.py` + `cron-prompt.md` | see above |
