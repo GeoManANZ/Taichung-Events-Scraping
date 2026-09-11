@@ -1,0 +1,16 @@
+candidate                              tier       status   signal   yield  note
+------------------------------------------------------------------------------------------------------------
+Taichung Culture Bureau ACTIVITY DB    direct 200 signal=42 OK           42     758  direct 200 signal=42
+National Taiwan Museum of Fine Arts    direct 200 signal=67 OK           67     831  direct 200 signal=67
+Cultural Heritage Bureau platform      fastcrw ok len=6084 signal=51 OK           51    4435  fastcrw ok len=6084 signal=51
+Cultural Heritage Park calendar        direct 200 signal=27 OK           27     440  direct 200 signal=27
+Tun District Art Center                fastcrw ok len=18414 signal=155 OK          155    6951  fastcrw ok len=18414 signal=155
+Taichung City event calendar           direct 200 signal=399 OK          399    4410  direct 200 signal=399
+Taichung MaaS festivals                direct 200 signal=486 OK          486    3984  direct 200 signal=486
+ERA Ticket                             direct 200 signal=30 OK           30     353  direct 200 signal=30
+UDN ticket                             direct 200 signal=259 OK          259    2708  direct 200 signal=259
+Artists.tw Taichung gigs               direct 200 signal=162 OK          162    2428  direct 200 signal=162
+iCulture 文化雲                           fastcrw ok len=14531 signal=41 OK           41    7587  fastcrw ok len=14531 signal=41
+TixFun                                 direct 200 signal=273 OK          273    2440  direct 200 signal=273
+National Museum of Natural Science     fastcrw ok len=13568 signal=33 OK           33    2078  fastcrw ok len=13568 signal=33
+Huludun Cultural Center                direct 200 signal=72 OK           72     827  direct 200 signal=72

@@ -10,7 +10,7 @@ The v3 job was an agent-mode cron. It failed structurally:
 
 | v3 agent-mode problem | Evidence (2026-09-11 run) | v4 fix |
 |---|---|---|
-| Security scanner blocks `curl`/python network calls when no approver is present | *"ACCUPASS/fastcrw/groktocrawl (curl blocked by security scanner in cron mode)"* — 8 of 10 sources dead | Script runs under the scheduler, outside the agent sandbox → **14/14 sources OK** |
+| Security scanner blocks `curl`/python network calls when no approver is present | *"ACCUPASS/fastcrw/groktocrawl (curl blocked by security scanner in cron mode)"* — 8 of 10 sources dead | Script runs under the scheduler, outside the agent sandbox → **13/13 sources OK** |
 | `mcp__fastcrw__fastcrw_search` SearXNG backend dead | all 4 search queries returned empty | `groktocrawl /v2/search` (Serper) |
 | No source-health visibility | failure list only in prose | per-source health rendered into the digest footer |
 | LLM budget/context limits | thin digests, dropped venues | one bounded LLM call, capped payload |
@@ -34,6 +34,27 @@ The v3 job was an agent-mode cron. It failed structurally:
 | `listing` | Events inline in page text → relevance-extract (date/time/price lines ±4 lines context) | ACCUPASS, Culture Bureau, Tourism ×2, Meetup, CPBL, Legacy, PTT |
 | `calendar` | Page is a link grid (no parseable dates) → fetch content with **no** signal gate, follow detail pages, extract each | NTT |
 | `search` | Site blocks every tier → discovery through the Serper search index | KKTIX, OPENTIX, Eventbrite |
+
+### Coverage audit (2026-09-11) — 13 → 24 sources
+
+A probe of 18 candidate sources (`spikes/probe_candidates.py`) found the original 13 covered only the venues that publish English or were already known. Every candidate below was verified live before being added — reachable, and yielding real date-bearing text.
+
+| Added source | Signal | Yield | Why it matters |
+|---|---|---|---|
+| Taichung MaaS festivals | 486 | 3,984 | Highest-signal source found; city festival calendar |
+| Taichung City event calendar | 399 | 4,410 | Official city event DB (`taichung.gov.tw/8868/8872/12026`) |
+| Tun District Art Center | 155 | 6,951 | Largest single yield; district arts venue |
+| Artists.tw gigs | 162 | 2,428 | Live-music gigs beyond Legacy |
+| Dadun Cultural Center | 18 | 1,698 | Second district arts venue |
+| iCulture | 41 | 758→ | `site:` prefix was too restrictive (1 hit) → bare query returns 8 |
+| National Museum of Fine Arts | 57 | 5,439 | Its **event platform** (`event.culture.tw/NTMOFA`); homepage yielded only 831 |
+| National Museum of Nat. Science | 33 | 2,078 | Science exhibitions |
+| Cultural Heritage Bureau | 51 | 4,435 | `event.culture.tw/BOCH`; heritage-park exhibitions |
+| TixFun / UDN ticket | — | — | Added as **search-index** sources; a direct scrape of a nationwide listing injects wrong-city events |
+
+**Culture Bureau caveat:** `activity.culture.taichung.gov.tw` redirects to the homepage, so this source yields a thin 758-char landing page rather than the activity database. The city calendar source above partially compensates; the real activity DB likely needs its own API or query parameters and is the obvious next target.
+
+**Deliberately not added:** ERA Ticket (353 chars — redundant with three other ticketing platforms), Huludun Cultural Center (827), Cultural Heritage Park calendar (440 — covered by the BOCH platform).
 
 ### Per-source notes (all verified 2026-09-11)
 
@@ -59,10 +80,12 @@ The v3 job was an agent-mode cron. It failed structurally:
 
 ## DeepSeek compile stage
 
-`deepseek-v4-flash` is a **reasoning model**: it emits `reasoning_content` and only then `content`. With a large scraped payload the thinking can consume the whole token budget, leaving `content` empty. `call_llm()` therefore:
+`deepseek-v4-flash` is a **reasoning model**: it emits `reasoning_content` and only then `content`. Two silent failure modes, both seen in production:
 
-- uses `max_tokens=16000` and retries once at 2× on empty content
-- **never** falls back to `reasoning_content` — that previously delivered a raw reasoning trace as the digest (visible in `/opt/data/cron/output/afb010899802/` from the v4 dev run)
+1. **Empty content** — thinking consumed the whole token budget. `call_llm()` retries at 2× budget and **never** falls back to `reasoning_content`; doing so previously delivered a raw reasoning trace as the digest.
+2. **Truncated content** — `finish_reason == "length"`, output stops mid-line. A digest that stops mid-Friday while *looking* complete is worse than a visible failure. `call_llm()` treats `length` as failure, escalates 16k → 32k tokens over 3 attempts, asks for a terse format on the final attempt, and raises `LLMTruncated` carrying the partial text so `main()` can deliver what it did extract **with a visible truncation warning**.
+
+The output format is deliberately one line per event: the earlier two-line-per-event format is what overran the budget in the first place.
 
 Failure modes are all handled with explicit stdout (stderr is invisible to cron): no sources → status table; LLM failure → per-source status; no events in window → stated plainly.
 
@@ -85,7 +108,8 @@ Failure modes are all handled with explicit stdout (stderr is invisible to cron)
 - **v2** — 6 sources, inline agent scraping
 - **v2.5** (Jul 2) — PTT + Culture Bureau re-added
 - **v3** (Aug 22) — source verification pass, tier ladder, radius widened
-- **v4** (Sep 11) — **agent → deterministic script**; signal-gated escalation; calendar link-following; DeepSeek reasoning-output fix; 2/10 → 14/14 sources
+- **v4** (Sep 11) — **agent → deterministic script**; signal-gated escalation; calendar link-following; DeepSeek reasoning-output fix; 2/10 → 13/13 sources
+- **v5** (Sep 11) — truncation detection + salvage in the compile stage; **coverage audit → 13 → 24 sources** (payload 31k → 60k chars, ~28 → ~40 events)
 
 ## Files
 
@@ -93,5 +117,6 @@ Failure modes are all handled with explicit stdout (stderr is invisible to cron)
 |---|---|
 | `taichung_events.py` | The scraper (source of truth) |
 | `deploy.sh` | Copies the scraper to `/opt/data/scripts/` — run after every edit |
-| `cron-prompt.md` | Legacy v3 agent prompt — kept for history, no longer used |
+| `spikes/` | Throwaway probes + `probe_candidates.py`, the coverage-audit tool |
+| `legacy-cron-prompt.md` | v3 agent prompt — no longer used, kept only for history |
 | `proxy_env.sh` | Webshare creds (gitignored) |

@@ -313,6 +313,41 @@ SOURCES = [
      "query": "site:eventbrite.com taichung events"},
     {"name": "General discovery", "mode": "search",
      "query": "台中 活動 週末 2026 展覽 演唱會 市集"},
+
+    # ---- Added 2026-09-11 after a coverage audit (probe_candidates.py) ----
+    # Every entry below was probed live: reachable, and signal-bearing enough
+    # that the relevance extractor yields usable text. Signal scores in the
+    # comment vs our best pre-audit source (ACCUPASS, 96).
+    {"name": "Taichung City event calendar", "mode": "listing",   # signal 399
+     "url": "https://www.taichung.gov.tw/8868/8872/12026"},
+    {"name": "Taichung MaaS festivals", "mode": "listing",        # signal 486
+     "url": "https://www.taichung-go.tw/ch/festival/index"},
+    {"name": "Tun District Art Center", "mode": "listing",        # yield 6951
+     "url": "https://www.ttdac.taichung.gov.tw/"},
+    {"name": "Cultural Heritage Bureau", "mode": "listing",       # yield 4435
+     "url": "https://event.culture.tw/BOCH"},
+    {"name": "Artists.tw gigs", "mode": "listing",                # live music
+     "url": "https://www.artists.tw/gigs/city/taichung/"},
+    {"name": "National Museum of Fine Arts", "mode": "listing",   # exhibitions
+     # The museum homepage yields only ~830 chars of signal; its dedicated
+     # event platform (event.culture.tw/NTMOFA) yields ~5,400. Use the platform.
+     "url": "https://event.culture.tw/NTMOFA"},
+    {"name": "National Museum of Nat. Science", "mode": "listing",
+     "url": "https://www.nmns.edu.tw/"},
+    {"name": "Dadun Cultural Center", "mode": "listing",
+     "url": "https://www.dadun.culture.taichung.gov.tw/"},
+    # National ticketing platforms: scraped via the search index rather than
+    # directly, because a direct scrape of a nationwide listing injects
+    # wrong-city events that the compiler then has to filter out. The query
+    # scopes them to Taichung, matching the KKTIX/OPENTIX/Eventbrite pattern.
+    {"name": "TixFun (search index)", "mode": "search",
+     "query": "site:tixfun.com 台中"},
+    {"name": "UDN ticket (search index)", "mode": "search",
+     "query": "site:tickets.udnfunlife.com 台中"},
+    {"name": "iCulture (search index)", "mode": "search",
+     # A `site:` prefix is too restrictive for this index — it returns a single
+     # hit. The bare form returns 8 and surfaces Taichung venue pages.
+     "query": "cloud.culture.tw 台中 展覽"},
 ]
 
 
